@@ -4,47 +4,42 @@ import shutil
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-def check_proxy_batch(ip_port_list, api_url_template):
+def check_proxy_single(ip, port, api_url_template):
     """
-    Mengecek batch proxy (50 IP:Port sekaligus) menggunakan API.
+    Mengecek satu proxy menggunakan API.
     """
     try:
-        # Format IP:Port untuk batch request
-        ip_port_str = ",".join(ip_port_list)
-        api_url = api_url_template.format(ip_port_str)
+        # Format URL API untuk satu proxy
+        api_url = api_url_template.format(ip=ip, port=port)
+        print(f"Mengakses API: {api_url}")
 
         # Kirim request ke API
         response = requests.get(api_url, timeout=60)
         response.raise_for_status()
         data = response.json()
 
-        # Proses hasil
-        results = []
-        for item in data:
-            ip_port = item.get("ip", "")  # Ambil IP:Port dari respons
-            status = item.get("proxyip", False)  # Ambil status proxyip
-            if status:
-                print(f"{ip_port} is ALIVE")
-                results.append((ip_port, None))  # Format: (ip:port, None)
-            else:
-                print(f"{ip_port} is DEAD")
-                results.append((None, f"{ip_port} is DEAD"))  # Format: (None, error_message)
-
-        return results
+        # Ambil status proxyip
+        status = data[0].get("proxyip", False)
+        if status:
+            print(f"{ip}:{port} is ALIVE")
+            return (ip, port, None)  # Format: (ip, port, None)
+        else:
+            print(f"{ip}:{port} is DEAD")
+            return (None, None, f"{ip}:{port} is DEAD")  # Format: (None, None, error_message)
     except requests.exceptions.RequestException as e:
-        error_message = f"Error checking batch: {e}"
+        error_message = f"Error checking {ip}:{port}: {e}"
         print(error_message)
-        return [(None, error_message) for _ in ip_port_list]
+        return (None, None, error_message)
     except ValueError as ve:
-        error_message = f"Error parsing JSON for batch: {ve}"
+        error_message = f"Error parsing JSON for {ip}:{port}: {ve}"
         print(error_message)
-        return [(None, error_message) for _ in ip_port_list]
+        return (None, None, error_message)
 
 def main():
     input_file = os.getenv('IP_FILE', 'zzzzkavhjdzzzz')
     output_file = 'zzzzkavhjdzzzz'
     error_file = 'error.txt'
-    api_url_template = os.getenv('API_URL', 'https://proxyip-check.vercel.app/{ip_port_list}')
+    api_url_template = os.getenv('API_URL', 'https://proxyip-check.vercel.app/{ip}:{port}')
 
     alive_proxies = []  # Menyimpan proxy yang aktif dengan format [ip, port, cc, isp]
     error_logs = []  # Menyimpan pesan error
@@ -53,38 +48,35 @@ def main():
         with open(input_file, "r") as f:
             reader = csv.reader(f)
             rows = list(reader)
+        print(f"Memproses {len(rows)} baris dari file input.")
     except FileNotFoundError:
         print(f"File {input_file} tidak ditemukan.")
         return
 
-    # Format IP:Port untuk batch request
-    ip_port_list = [f"{row[0].strip()}:{row[1].strip()}" for row in rows if len(row) >= 2]
-
-    # Bagi menjadi batch 50 IP:Port per request
-    batch_size = 50
-    batches = [ip_port_list[i:i + batch_size] for i in range(0, len(ip_port_list), batch_size]
-
     with ThreadPoolExecutor(max_workers=10) as executor:
-        futures = {executor.submit(check_proxy_batch, batch, api_url_template): batch for batch in batches}
+        futures = []
+        for row in rows:
+            if len(row) >= 2:
+                ip, port = row[0].strip(), row[1].strip()
+                futures.append(executor.submit(check_proxy_single, ip, port, api_url_template))
 
         for future in as_completed(futures):
-            results = future.result()
-            for result in results:
-                ip_port, error = result
-                if ip_port:
-                    # Cari baris yang sesuai dari file input
-                    for row in rows:
-                        if f"{row[0].strip()}:{row[1].strip()}" == ip_port:
-                            alive_proxies.append(row)  # Simpan seluruh baris (ip, port, cc, isp)
-                            break
-                if error:
-                    error_logs.append(error)
+            ip, port, error = future.result()
+            if ip and port:
+                # Cari baris yang sesuai dari file input
+                for row in rows:
+                    if row[0].strip() == ip and row[1].strip() == port:
+                        alive_proxies.append(row)  # Simpan seluruh baris (ip, port, cc, isp)
+                        break
+            if error:
+                error_logs.append(error)
 
     # Tulis proxy yang aktif ke file output
     try:
         with open(output_file, "w", newline="") as f:
             writer = csv.writer(f)
             writer.writerows(alive_proxies)
+        print(f"File output {output_file} telah diperbarui.")
     except Exception as e:
         print(f"Error menulis ke {output_file}: {e}")
         return
