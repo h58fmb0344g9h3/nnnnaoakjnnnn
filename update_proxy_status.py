@@ -41,8 +41,8 @@ def check_proxy_batch(ip_port_list, api_url_template):
         return [(None, error_message) for _ in ip_port_list]
 
 def main():
-    input_file = os.getenv('IP_FILE', 'f74bjd2h2ko99f3j5')
-    output_file = 'f74bjd2h2ko99f3j5'
+    input_file = os.getenv('IP_FILE', 'zzzzkavhjdzzzz')
+    output_file = 'zzzzkavhjdzzzz'
     error_file = 'error.txt'
     api_url_template = os.getenv('API_URL', 'https://proxyip-check.vercel.app/{ip_port_list}')
 
