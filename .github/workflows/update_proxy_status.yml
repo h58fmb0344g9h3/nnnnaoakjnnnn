@@ -16,7 +16,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.x'
+        python-version: '3.11'  # Gunakan Python 3.11 (versi stabil)
 
     - name: Install dependencies
       run: |
@@ -25,8 +25,8 @@ jobs:
 
     - name: Update proxy status
       env:
-        IP_FILE: 'zzzzkavhjdzzzz'
-        API_URL: 'https://proxyip-check.vercel.app/{ip_port_list}'  # API baru untuk batch check
+        IP_FILE: 'zzzzkavhjdzzzz'  # File input
+        API_URL: 'https://proxyip-check.vercel.app/{ip}:{port}'  # API untuk pengecekan satu per satu
       run: |
         python update_proxy_status.py
 
