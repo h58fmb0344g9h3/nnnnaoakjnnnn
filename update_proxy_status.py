@@ -71,8 +71,8 @@ def generate_grouped_json(proxy_data, output_file='alive_proxies_grouped.json'):
 
 
 def main():
-    input_file = os.getenv('IP_FILE', 'f74bjd2h2ko99f3j5')
-    output_file = 'f74bjd2h2ko99f3j5.tmp'
+    input_file = os.getenv('IP_FILE', 'zzzzkavhjdzzzz')
+    output_file = 'zzzzkavhjdzzzz.tmp'
     error_file = 'error.txt'
     api_url_template = os.getenv('API_URL', 'https://proxyip-check.vercel.app/{ip}:{port}')
 
