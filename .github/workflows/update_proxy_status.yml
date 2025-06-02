@@ -25,7 +25,7 @@ jobs:
 
     - name: Update proxy status
       env:
-        IP_FILE: 'f74bjd2h2ko99f3j5'
+        IP_FILE: 'zzzzkavhjdzzzz'
         API_URL: 'https://proxyip-check.vercel.app/{ip}:{port}'
       run: |
         python update_proxy_status.py
@@ -34,7 +34,7 @@ jobs:
       run: |
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git add f74bjd2h2ko99f3j5
+        git add zzzzkavhjdzzzz
         git add error.txt
         git add alive_proxies_grouped.json
         if git diff --cached --exit-code; then
