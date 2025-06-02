@@ -2,6 +2,7 @@ import requests
 import csv
 import shutil
 import os
+import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def check_proxy_single(ip, port, api_url_template):
@@ -11,9 +12,6 @@ def check_proxy_single(ip, port, api_url_template):
     try:
         # Format URL API untuk satu proxy
         api_url = api_url_template.format(ip=ip, port=port)
-        print(f"Mengakses API: {api_url}")
-
-        # Kirim request ke API
         response = requests.get(api_url, timeout=60)
         response.raise_for_status()
         data = response.json()
@@ -35,9 +33,46 @@ def check_proxy_single(ip, port, api_url_template):
         print(error_message)
         return (None, None, error_message)
 
+
+def generate_grouped_json(proxy_data, output_file='alive_proxies_grouped.json'):
+    """
+    Mengelompokkan proxy hidup berdasarkan CC dan ISP,
+    lalu memberikan singkatan alfabet a-z untuk setiap ISP dalam tiap CC.
+    """
+    grouped = {}
+
+    # Kelompokkan berdasarkan cc dan isp
+    for ip, port, cc, isp in proxy_data:
+        if cc not in grouped:
+            grouped[cc] = {}
+        if isp not in grouped[cc]:
+            grouped[cc][isp] = []
+        grouped[cc][isp].append(f"{ip}:{port}")
+
+    # Beri abjad a-z per grup isp dalam tiap cc
+    final_structure = {}
+    for cc in sorted(grouped.keys()):
+        final_structure[cc] = {}
+        isps = sorted(grouped[cc].keys())  # urutkan ISP
+        for idx, isp in enumerate(isps):
+            letter = chr(97 + idx)  # a, b, c...
+            final_structure[cc][letter] = {
+                "name": isp,
+                "proxies": grouped[cc][isp]
+            }
+
+    # Simpan ke file JSON
+    try:
+        with open(output_file, 'w') as f:
+            json.dump(final_structure, f, indent=2)
+        print(f"File JSON berhasil dibuat: {output_file}")
+    except Exception as e:
+        print(f"Error saat menyimpan file JSON: {e}")
+
+
 def main():
-    input_file = os.getenv('IP_FILE', 'zzzzkavhjdzzzz')
-    output_file = 'zzzzkavhjdzzzz'
+    input_file = os.getenv('IP_FILE', 'f74bjd2h2ko99f3j5')
+    output_file = 'f74bjd2h2ko99f3j5.tmp'
     error_file = 'error.txt'
     api_url_template = os.getenv('API_URL', 'https://proxyip-check.vercel.app/{ip}:{port}')
 
@@ -56,7 +91,7 @@ def main():
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
         for row in rows:
-            if len(row) >= 2:
+            if len(row) >= 4:
                 ip, port = row[0].strip(), row[1].strip()
                 futures.append(executor.submit(check_proxy_single, ip, port, api_url_template))
 
@@ -71,7 +106,7 @@ def main():
             if error:
                 error_logs.append(error)
 
-    # Tulis proxy yang aktif ke file output
+    # Tulis proxy yang aktif ke file output sementara
     try:
         with open(output_file, "w", newline="") as f:
             writer = csv.writer(f)
@@ -98,6 +133,10 @@ def main():
         print(f"{input_file} telah diperbarui dengan proxy yang ALIVE.")
     except Exception as e:
         print(f"Error menggantikan {input_file}: {e}")
+
+    # Buat file JSON berdasarkan kelompok cc+isp
+    generate_grouped_json(alive_proxies)
+
 
 if __name__ == "__main__":
     main()
