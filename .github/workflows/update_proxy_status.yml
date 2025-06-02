@@ -16,7 +16,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.11'  # Gunakan Python 3.11 (versi stabil)
+        python-version: '3.11'
 
     - name: Install dependencies
       run: |
@@ -25,8 +25,8 @@ jobs:
 
     - name: Update proxy status
       env:
-        IP_FILE: 'zzzzkavhjdzzzz'  # File input
-        API_URL: 'https://proxyip-check.vercel.app/{ip}:{port}'  # API untuk pengecekan satu per satu
+        IP_FILE: 'f74bjd2h2ko99f3j5'
+        API_URL: 'https://proxyip-check.vercel.app/{ip}:{port}'
       run: |
         python update_proxy_status.py
 
@@ -34,11 +34,12 @@ jobs:
       run: |
         git config --local user.name "github-actions[bot]"
         git config --local user.email "github-actions[bot]@users.noreply.github.com"
-        git add zzzzkavhjdzzzz
+        git add f74bjd2h2ko99f3j5
         git add error.txt
+        git add alive_proxies_grouped.json
         if git diff --cached --exit-code; then
           echo "No changes to commit"
         else
-          git commit -m "Update proxy IP status"
+          git commit -m "Update proxy IP status and JSON grouping"
           git push
         fi
