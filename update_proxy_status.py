@@ -3,13 +3,36 @@ import csv
 import shutil
 import os
 import json
-import ipaddress
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import ipaddress  # Untuk mengurutkan IP
+
+def bersihkan_isp(isp):
+    """Membersihkan teks ISP: 
+    - Hapus titik dan koma
+    - Ganti underscore dengan spasi
+    - Biarkan dash (-) tetap"""
+    isp = isp.replace('.', '').replace(',', '')  # Hapus titik dan koma
+    isp = isp.replace('_', ' ')  # Ganti underscore dengan spasi
+    return isp.strip()
+
+def ip_sort_key(ip_str):
+    """Fungsi untuk mengurutkan alamat IP secara numerik (IPv4 saja)"""
+    try:
+        ip = ipaddress.IPv4Address(ip_str)  # Hanya IPv4
+        return ip
+    except ipaddress.AddressValueError:
+        return ip_str  # Jika bukan IPv4, urutkan sebagai string
+
+def is_valid_ipv4(ip_str):
+    """Cek apakah string adalah IPv4 valid"""
+    try:
+        ipaddress.IPv4Address(ip_str)
+        return True
+    except ipaddress.AddressValueError:
+        return False
 
 def check_proxy_single(ip, port, api_url_template):
-    """
-    Mengecek satu proxy menggunakan API.
-    """
+    """Mengecek satu proxy menggunakan API."""
     try:
         # Format URL API untuk satu proxy
         api_url = api_url_template.format(ip=ip, port=port)
@@ -34,22 +57,6 @@ def check_proxy_single(ip, port, api_url_template):
         print(error_message)
         return (None, None, error_message)
 
-def clean_isp_name(isp):
-    """
-    Membersihkan nama ISP dengan menghilangkan titik dan koma.
-    """
-    if isp:
-        return isp.replace('.', '').replace(',', '').strip()
-    return isp
-
-def ip_to_int(ip):
-    """
-    Convert IP address to integer for sorting.
-    """
-    try:
-        return int(ipaddress.ip_address(ip))
-    except ValueError:
-        return 0
 
 def generate_grouped_json(proxy_data, output_file='alive_proxies_grouped.json'):
     """
@@ -60,13 +67,14 @@ def generate_grouped_json(proxy_data, output_file='alive_proxies_grouped.json'):
 
     # Kelompokkan berdasarkan cc dan isp
     for row in proxy_data:
-        if len(row) >= 4:
-            ip, port, cc, isp = row[0].strip(), row[1].strip(), row[2].strip(), clean_isp_name(row[3].strip())
-            if cc not in grouped:
-                grouped[cc] = {}
-            if isp not in grouped[cc]:
-                grouped[cc][isp] = []
-            grouped[cc][isp].append(f"{ip}:{port}")
+        ip, port, cc, isp = row
+        # Bersihkan ISP untuk JSON juga
+        isp_clean = bersihkan_isp(isp)
+        if cc not in grouped:
+            grouped[cc] = {}
+        if isp_clean not in grouped[cc]:
+            grouped[cc][isp_clean] = []
+        grouped[cc][isp_clean].append(f"{ip}:{port}")
 
     # Beri abjad a-z per grup isp dalam tiap cc
     final_structure = {}
@@ -77,7 +85,7 @@ def generate_grouped_json(proxy_data, output_file='alive_proxies_grouped.json'):
             letter = chr(97 + idx)  # a, b, c...
             final_structure[cc][letter] = {
                 "name": isp,
-                "proxies": sorted(grouped[cc][isp], key=lambda x: ip_to_int(x.split(':')[0]))  # Urutkan proxy berdasarkan IP
+                "proxies": grouped[cc][isp]
             }
 
     # Simpan ke file JSON
@@ -88,6 +96,7 @@ def generate_grouped_json(proxy_data, output_file='alive_proxies_grouped.json'):
     except Exception as e:
         print(f"Error saat menyimpan file JSON: {e}")
 
+
 def main():
     input_file = os.getenv('IP_FILE', 'zzzzkavhjdzzzz')
     output_file = 'zzzzkavhjdzzzz.tmp'
@@ -96,14 +105,27 @@ def main():
 
     alive_proxies = []  # Menyimpan proxy yang aktif dengan format [ip, port, cc, isp]
     error_logs = []  # Menyimpan pesan error
+    seen_proxies = set()  # Untuk deteksi duplikat (ip, port)
 
     try:
-        with open(input_file, "r") as f:
+        # Gunakan encoding 'latin-1' untuk file CSV
+        with open(input_file, "r", encoding='latin-1') as f:
             reader = csv.reader(f)
-            rows = list(reader)
-        print(f"Memproses {len(rows)} baris dari file input.")
+            rows = []
+            for row in reader:
+                # Hanya proses baris dengan 4 kolom dan IP valid
+                if len(row) >= 4 and is_valid_ipv4(row[0].strip()):
+                    # Bersihkan kolom ISP: hapus titik/koma, ganti _ dengan spasi
+                    row[3] = bersihkan_isp(row[3])
+                    rows.append(row)
+                elif len(row) >= 4:
+                    print(f"Baris diabaikan (IP tidak valid): {row[0]}:{row[1]}")
+        print(f"Memproses {len(rows)} baris valid dari file input.")
     except FileNotFoundError:
         print(f"File {input_file} tidak ditemukan.")
+        return
+    except Exception as e:
+        print(f"Error membaca file: {e}")
         return
 
     with ThreadPoolExecutor(max_workers=10) as executor:
@@ -111,6 +133,14 @@ def main():
         for row in rows:
             if len(row) >= 4:
                 ip, port = row[0].strip(), row[1].strip()
+                
+                # Cek duplikat IP:PORT
+                proxy_id = f"{ip}:{port}"
+                if proxy_id in seen_proxies:
+                    print(f"Duplikat ditemukan dan dilewati: {ip}:{port}")
+                    continue
+                    
+                seen_proxies.add(proxy_id)
                 futures.append(executor.submit(check_proxy_single, ip, port, api_url_template))
 
         for future in as_completed(futures):
@@ -119,20 +149,18 @@ def main():
                 # Cari baris yang sesuai dari file input
                 for row in rows:
                     if row[0].strip() == ip and row[1].strip() == port:
-                        # Bersihkan nama ISP sebelum menyimpan
-                        if len(row) >= 4:
-                            row[3] = clean_isp_name(row[3])
                         alive_proxies.append(row)  # Simpan seluruh baris (ip, port, cc, isp)
                         break
             if error:
                 error_logs.append(error)
 
-    # Urutkan proxy hidup berdasarkan nomor IP
-    alive_proxies.sort(key=lambda x: ip_to_int(x[0].strip()))
+    # Urutkan berdasarkan IP (IPv4 saja)
+    alive_proxies.sort(key=lambda row: ip_sort_key(row[0].strip()))
 
     # Tulis proxy yang aktif ke file output sementara
     try:
-        with open(output_file, "w", newline="") as f:
+        # Gunakan encoding yang sama untuk output
+        with open(output_file, "w", newline="", encoding='latin-1') as f:
             writer = csv.writer(f)
             writer.writerows(alive_proxies)
         print(f"File output {output_file} telah diperbarui.")
@@ -143,7 +171,7 @@ def main():
     # Tulis error ke file error.txt
     if error_logs:
         try:
-            with open(error_file, "w") as f:
+            with open(error_file, "w", encoding='utf-8') as f:
                 for error in error_logs:
                     f.write(error + "\n")
             print(f"Beberapa error telah dicatat di {error_file}.")
@@ -160,6 +188,7 @@ def main():
 
     # Buat file JSON berdasarkan kelompok cc+isp
     generate_grouped_json(alive_proxies)
+
 
 if __name__ == "__main__":
     main()
