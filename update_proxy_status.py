@@ -3,95 +3,90 @@ import csv
 import shutil
 import os
 import json
-import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 import ipaddress
-
-def clean_isp(isp):
-    """Membersihkan teks ISP dari tanda titik dan koma"""
-    if not isp:
-        return ""
-    return isp.replace(".", "").replace(",", "").strip()
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def check_proxy_single(ip, port, api_url_template):
     """
-    Mengecek satu proxy dan mengembalikan status + latency (jika diperlukan).
+    Mengecek satu proxy menggunakan API.
     """
     try:
-        start_time = time.time()
+        # Format URL API untuk satu proxy
         api_url = api_url_template.format(ip=ip, port=port)
         response = requests.get(api_url, timeout=60)
-        latency = int((time.time() - start_time) * 1000)  # Latency dalam ms
+        response.raise_for_status()
         data = response.json()
+
+        # Ambil status proxyip
         status = data[0].get("proxyip", False)
-        
         if status:
-            print(f"{ip}:{port} is ALIVE ({latency}ms)")
-            return (ip, port, latency, None)
+            print(f"{ip}:{port} is ALIVE")
+            return (ip, port, None)  # Format: (ip, port, None)
         else:
             print(f"{ip}:{port} is DEAD")
-            return (None, None, None, f"{ip}:{port} is DEAD")
-    except Exception as e:
-        return (None, None, None, f"Error: {str(e)}")
+            return (None, None, f"{ip}:{port} is DEAD")  # Format: (None, None, error_message)
+    except requests.exceptions.RequestException as e:
+        error_message = f"Error checking {ip}:{port}: {e}"
+        print(error_message)
+        return (None, None, error_message)
+    except ValueError as ve:
+        error_message = f"Error parsing JSON for {ip}:{port}: {ve}"
+        print(error_message)
+        return (None, None, error_message)
 
-def clean_row(row):
+def clean_isp_name(isp):
     """
-    Membersihkan baris CSV: menghapus koma terakhir dan latency jika ada.
-    Juga membersihkan teks ISP.
-    Contoh:
-      Input: "1.1.1.1,8080,US,Verizon,100ms" 
-      Output: ["1.1.1.1", "8080", "US", "Verizon"]
+    Membersihkan nama ISP dengan menghilangkan titik dan koma.
     """
-    # Hilangkan elemen kosong dan strip whitespace
-    cleaned = [col.strip() for col in row if col.strip()]
-    
-    # Jika ada lebih dari 4 kolom (ada latency), ambil hanya 4 kolom pertama
-    if len(cleaned) > 4:
-        cleaned = cleaned[:4]
-    
-    # Bersihkan teks ISP jika ada
-    if len(cleaned) >= 4:
-        cleaned[3] = clean_isp(cleaned[3])
-    
-    return cleaned
+    if isp:
+        return isp.replace('.', '').replace(',', '').strip()
+    return isp
 
-def sort_by_ip(proxy_list):
-    """Mengurutkan list proxy berdasarkan nomor IP"""
+def ip_to_int(ip):
+    """
+    Convert IP address to integer for sorting.
+    """
     try:
-        return sorted(proxy_list, key=lambda x: ipaddress.ip_address(x[0]))
-    except:
-        return proxy_list
+        return int(ipaddress.ip_address(ip))
+    except ValueError:
+        return 0
 
 def generate_grouped_json(proxy_data, output_file='alive_proxies_grouped.json'):
     """
-    Kelompokkan proxy hidup berdasarkan CC dan ISP (tanpa latency).
-    Diurutkan berdasarkan countryCode.
+    Mengelompokkan proxy hidup berdasarkan CC dan ISP,
+    lalu memberikan singkatan alfabet a-z untuk setiap ISP dalam tiap CC.
     """
     grouped = {}
-    for row in proxy_data:
-        ip, port, cc, isp = row[:4]  # Pastikan hanya ambil 4 kolom
-        if cc not in grouped:
-            grouped[cc] = {}
-        if isp not in grouped[cc]:
-            grouped[cc][isp] = []
-        grouped[cc][isp].append(f"{ip}:{port}")
 
-    # Beri label a-z untuk setiap ISP dalam CC
+    # Kelompokkan berdasarkan cc dan isp
+    for row in proxy_data:
+        if len(row) >= 4:
+            ip, port, cc, isp = row[0].strip(), row[1].strip(), row[2].strip(), clean_isp_name(row[3].strip())
+            if cc not in grouped:
+                grouped[cc] = {}
+            if isp not in grouped[cc]:
+                grouped[cc][isp] = []
+            grouped[cc][isp].append(f"{ip}:{port}")
+
+    # Beri abjad a-z per grup isp dalam tiap cc
     final_structure = {}
-    for cc in sorted(grouped.keys()):  # Urutkan countryCode
+    for cc in sorted(grouped.keys()):  # Urutkan berdasarkan countryCode
         final_structure[cc] = {}
-        isps = sorted(grouped[cc].keys())  # Urutkan ISP dalam setiap country
+        isps = sorted(grouped[cc].keys())  # urutkan ISP
         for idx, isp in enumerate(isps):
             letter = chr(97 + idx)  # a, b, c...
             final_structure[cc][letter] = {
                 "name": isp,
-                "proxies": sorted(grouped[cc][isp])  # Urutkan proxy dalam setiap ISP
+                "proxies": sorted(grouped[cc][isp], key=lambda x: ip_to_int(x.split(':')[0]))  # Urutkan proxy berdasarkan IP
             }
 
-    # Simpan ke JSON
-    with open(output_file, 'w') as f:
-        json.dump(final_structure, f, indent=2)
-    print(f"File JSON disimpan: {output_file}")
+    # Simpan ke file JSON
+    try:
+        with open(output_file, 'w') as f:
+            json.dump(final_structure, f, indent=2)
+        print(f"File JSON berhasil dibuat: {output_file}")
+    except Exception as e:
+        print(f"Error saat menyimpan file JSON: {e}")
 
 def main():
     input_file = os.getenv('IP_FILE', 'zzzzkavhjdzzzz')
@@ -99,60 +94,72 @@ def main():
     error_file = 'error.txt'
     api_url_template = os.getenv('API_URL', 'https://proxyip-check.vercel.app/{ip}:{port}')
 
-    alive_proxies = []  # Format: [[ip, port, cc, isp], ...]
-    error_logs = []
+    alive_proxies = []  # Menyimpan proxy yang aktif dengan format [ip, port, cc, isp]
+    error_logs = []  # Menyimpan pesan error
 
-    # Baca file input dan bersihkan setiap baris
     try:
         with open(input_file, "r") as f:
             reader = csv.reader(f)
-            rows = [clean_row(row) for row in reader if row]
-        print(f"Memproses {len(rows)} baris (setelah dibersihkan).")
+            rows = list(reader)
+        print(f"Memproses {len(rows)} baris dari file input.")
     except FileNotFoundError:
         print(f"File {input_file} tidak ditemukan.")
         return
 
-    # Check proxy dengan ThreadPool
     with ThreadPoolExecutor(max_workers=10) as executor:
         futures = []
         for row in rows:
-            if len(row) >= 2:  # Minimal ip,port
-                ip, port = row[0], row[1]
+            if len(row) >= 4:
+                ip, port = row[0].strip(), row[1].strip()
                 futures.append(executor.submit(check_proxy_single, ip, port, api_url_template))
 
         for future in as_completed(futures):
-            ip, port, _, error = future.result()  # Abaikan latency (kolom ke-3)
+            ip, port, error = future.result()
             if ip and port:
-                # Cari row asli (tanpa latency) yang sesuai
+                # Cari baris yang sesuai dari file input
                 for row in rows:
-                    if row[0] == ip and row[1] == port:
-                        alive_proxies.append(row[:4])  # Simpan hanya ip,port,cc,isp
+                    if row[0].strip() == ip and row[1].strip() == port:
+                        # Bersihkan nama ISP sebelum menyimpan
+                        if len(row) >= 4:
+                            row[3] = clean_isp_name(row[3])
+                        alive_proxies.append(row)  # Simpan seluruh baris (ip, port, cc, isp)
                         break
             if error:
                 error_logs.append(error)
 
-    # Urutkan berdasarkan IP sebelum menyimpan ke CSV
-    alive_proxies_sorted = sort_by_ip(alive_proxies)
+    # Urutkan proxy hidup berdasarkan nomor IP
+    alive_proxies.sort(key=lambda x: ip_to_int(x[0].strip()))
 
-    # Simpan hasil ke file CSV (tanpa latency)
+    # Tulis proxy yang aktif ke file output sementara
     try:
         with open(output_file, "w", newline="") as f:
             writer = csv.writer(f)
-            writer.writerows(alive_proxies_sorted)
-        print(f"File sementara disimpan: {output_file}")
+            writer.writerows(alive_proxies)
+        print(f"File output {output_file} telah diperbarui.")
     except Exception as e:
-        print(f"Gagal menyimpan {output_file}: {e}")
+        print(f"Error menulis ke {output_file}: {e}")
         return
 
-    # Ganti file input dengan output
+    # Tulis error ke file error.txt
+    if error_logs:
+        try:
+            with open(error_file, "w") as f:
+                for error in error_logs:
+                    f.write(error + "\n")
+            print(f"Beberapa error telah dicatat di {error_file}.")
+        except Exception as e:
+            print(f"Error menulis ke {error_file}: {e}")
+            return
+
+    # Ganti file input dengan file output
     try:
         shutil.move(output_file, input_file)
-        print(f"File {input_file} telah diperbarui (tanpa latency).")
+        print(f"{input_file} telah diperbarui dengan proxy yang ALIVE.")
     except Exception as e:
-        print(f"Gagal mengganti file: {e}")
+        print(f"Error menggantikan {input_file}: {e}")
 
-    # Buat file JSON
-    generate_grouped_json(alive_proxies_sorted)
+    # Buat file JSON berdasarkan kelompok cc+isp
+    generate_grouped_json(alive_proxies)
 
 if __name__ == "__main__":
     main()
