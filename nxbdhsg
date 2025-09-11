@@ -2,7 +2,7 @@
   {
     "tombol": "𝘽𝙄𝙕 𝙐𝙣𝙡𝙞𝙢𝙞𝙩𝙚𝙙",
     "inisial": "bu",
-    "langsung_bayar": "true",
+    "langsung_bayar": true,
     "data": [
       {
         "nama": "Biz Tayo Unlimited",
@@ -17,11 +17,12 @@
   {
     "tombol": "𝙐𝙣𝙡𝙞𝙢𝙞𝙩𝙚𝙙 𝙏𝙪𝙧𝙗𝙤",
     "inisial": "ut",
-    "langsung_bayar": "false",
+    "langsung_bayar": false,
     "data": [
       {
         "tombol": "𝙑𝙞𝙙𝙞𝙤",
         "inisial": "vid",
+        "langsung_bayar": true,
         "data": [
           {
             "nama": "Vidio",
@@ -36,6 +37,7 @@
       {
         "tombol": "𝙄𝙛𝙡𝙞𝙭",
         "inisial": "ifl",
+        "langsung_bayar": true,
         "data": [
           {
             "nama": "Iflix",
