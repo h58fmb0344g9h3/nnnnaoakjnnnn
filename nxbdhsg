@@ -8,6 +8,7 @@
         "nama": "Biz Tayo Unlimited",
         "harga": 6000,
         "kode": "bizz",
+        "kode_unik": "BIZ",
         "payment_support": "dana, shopee, gopay",
         "payment_tombol": "𝘿𝙖𝙣𝙖, 𝙎𝙝𝙤𝙥𝙚𝙚, 𝙂𝙤𝙥𝙖𝙮",
         "deskripsi": "Harga:\n- Siapkan saldo ewalet Rp: 50.000\n\nRincian Benefit:\n- Kuota all : 13 GB\n- Expired : 30 Hari\n\nTips:\n- Jangan gunakan nomor pribadi, gunakan nomor lain atau beli kartu lagi\n- Inject menggunakan bug (ava.game.naver.com) mode Wildcard, Websocket\n- Limit blom tau smoga saja unlimited"
@@ -28,6 +29,7 @@
             "nama": "Vidio",
             "harga": 3000,
             "kode": "addon_dana",
+            "kode_unik": "VID",
             "payment_support": "dana, shopee, gopay, pulsa, qris",
             "payment_tombol": "𝘿𝙖𝙣𝙖, 𝙎𝙝𝙤𝙥𝙚𝙚, 𝙂𝙤𝙥𝙖𝙮, 𝙋𝙪𝙡𝙨𝙖, 𝙌𝙧𝙞𝙨",
             "deskripsi": "Harga :\n- Siapkan saldo ewalet/pulsa Rp: 25.000\n\nRincian Benefit: \n- Kuota Vidio : Unlimited\n- Expired : 30 Hari"
@@ -43,6 +45,7 @@
             "nama": "Iflix",
             "harga": 3000,
             "kode": "addon_dana",
+            "kode_unik": "IFL",
             "payment_support": "dana, shopee, gopay, pulsa, qris",
             "payment_tombol": "𝘿𝙖𝙣𝙖, 𝙎𝙝𝙤𝙥𝙚𝙚, 𝙂𝙤𝙥𝙖𝙮, 𝙋𝙪𝙡𝙨𝙖, 𝙌𝙧𝙞𝙨",
             "deskripsi": "Harga :\n- Siapkan saldo ewalet/pulsa Rp: 25.000\n\nRincian Benefit: \n- Kuota Iflix : Unlimited\n- Expired : 30 Hari"
