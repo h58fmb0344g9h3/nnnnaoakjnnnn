@@ -1,14 +1,14 @@
 [
   {
     "tombol": "𝘽𝙄𝙕 𝙐𝙣𝙡𝙞𝙢𝙞𝙩𝙚𝙙",
-    "inisial": "bu",
+    "inisial": "A",
     "langsung_bayar": true,
     "data": [
       {
         "nama": "Biz Tayo Unlimited",
         "harga": 6000,
         "kode": "bizz",
-        "kode_unik": "BIZ",
+        "kode_unik": "A",
         "payment_support": "dana, shopee, gopay",
         "payment_tombol": "𝘿𝙖𝙣𝙖, 𝙎𝙝𝙤𝙥𝙚𝙚, 𝙂𝙤𝙥𝙖𝙮",
         "deskripsi": "Harga:\n- Siapkan saldo ewalet Rp: 50.000\n\nRincian Benefit:\n- Kuota all : 13 GB\n- Expired : 30 Hari\n\nTips:\n- Jangan gunakan nomor pribadi, gunakan nomor lain atau beli kartu lagi\n- Inject menggunakan bug (ava.game.naver.com) mode Wildcard, Websocket\n- Limit blom tau smoga saja unlimited"
@@ -17,19 +17,19 @@
   },
   {
     "tombol": "𝙐𝙣𝙡𝙞𝙢𝙞𝙩𝙚𝙙 𝙏𝙪𝙧𝙗𝙤",
-    "inisial": "ut",
+    "inisial": "B",
     "langsung_bayar": false,
     "data": [
       {
         "tombol": "𝙑𝙞𝙙𝙞𝙤",
-        "inisial": "vid",
+        "inisial": "a",
         "langsung_bayar": true,
         "data": [
           {
-            "nama": "Vidio",
+            "nama": "Apps Vidio",
             "harga": 3000,
             "kode": "addon_dana",
-            "kode_unik": "VID",
+            "kode_unik": "vi",
             "payment_support": "dana, shopee, gopay, pulsa, qris",
             "payment_tombol": "𝘿𝙖𝙣𝙖, 𝙎𝙝𝙤𝙥𝙚𝙚, 𝙂𝙤𝙥𝙖𝙮, 𝙋𝙪𝙡𝙨𝙖, 𝙌𝙧𝙞𝙨",
             "deskripsi": "Harga :\n- Siapkan saldo ewalet/pulsa Rp: 25.000\n\nRincian Benefit: \n- Kuota Vidio : Unlimited\n- Expired : 30 Hari"
@@ -38,14 +38,14 @@
       },
       {
         "tombol": "𝙄𝙛𝙡𝙞𝙭",
-        "inisial": "ifl",
+        "inisial": "b",
         "langsung_bayar": true,
         "data": [
           {
-            "nama": "Iflix",
+            "nama": "Apps Iflix",
             "harga": 3000,
             "kode": "addon_dana",
-            "kode_unik": "IFL",
+            "kode_unik": "if",
             "payment_support": "dana, shopee, gopay, pulsa, qris",
             "payment_tombol": "𝘿𝙖𝙣𝙖, 𝙎𝙝𝙤𝙥𝙚𝙚, 𝙂𝙤𝙥𝙖𝙮, 𝙋𝙪𝙡𝙨𝙖, 𝙌𝙧𝙞𝙨",
             "deskripsi": "Harga :\n- Siapkan saldo ewalet/pulsa Rp: 25.000\n\nRincian Benefit: \n- Kuota Iflix : Unlimited\n- Expired : 30 Hari"
